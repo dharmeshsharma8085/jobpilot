@@ -1,0 +1,49 @@
+
+# ==========================================
+# JobPilot AI - Python Dependencies
+# ==========================================
+
+# Backend API
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+
+# Database and migrations
+sqlalchemy
+psycopg[binary]
+alembic
+
+# HTTP clients and permitted parsing
+httpx
+beautifulsoup4
+python-dateutil
+
+# LLM and GenAI
+openai
+langchain
+langchain-openai
+
+# Resume and document parsing
+pypdf
+python-docx
+
+# Dashboard and data processing
+streamlit
+pandas
+
+# Gmail API and OAuth
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+
+# Logging and configuration
+structlog
+python-dotenv
+
+# Testing and code quality
+pytest
+pytest-cov
+ruff

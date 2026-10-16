@@ -1,0 +1,22 @@
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: jobpilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jobpilot
+      POSTGRES_USER: jobpilot_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - jobpilot_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobpilot_user -d jobpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  jobpilot_postgres_data:
