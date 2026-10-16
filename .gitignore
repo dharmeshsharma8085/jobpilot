@@ -1,5 +1,57 @@
-.env
-.venv/
+# Bytecode
 __pycache__/
+*.py[codz]
+*$py.class
+
+# Python environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+ENV/
+
+# Testing and coverage
 .pytest_cache/
 .coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# Logs and caches
+*.log
+.cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+
+# Local databases and secrets
+*.sqlite3
+*.sqlite3-journal
+.streamlit/secrets.toml
+.pypirc
+
+# Editors and notebooks
+.spyderproject
+.spyproject
+.ropeproject
+.ipynb_checkpoints/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep uv.lock tracked for reproducible installs
