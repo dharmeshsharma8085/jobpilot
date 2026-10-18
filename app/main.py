@@ -1,4 +1,4 @@
-
+from app.matching.scorer import MY_PROFILE, calculate_match_score, get_skill_gaps
 from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.orm import Session
@@ -44,13 +44,81 @@ def health():
     return {"status": "healthy", "service": "JobPilot AI"}
 
 
+
 @app.post("/jobs/search")
-def search_jobs(payload: JobSearchRequest):
+def search_jobs(
+    payload: JobSearchRequest,
+    db: Session = Depends(get_db),
+):
+    jobs = list_jobs(db, limit=100)
+
+    results = []
+
+    for job in jobs:
+        if payload.role and payload.role.casefold() not in job.title.casefold():
+            continue
+
+        if (
+            payload.location
+            and payload.location.casefold() not in job.location.casefold()
+        ):
+            continue
+
+        if (
+            payload.job_type
+            and payload.job_type.casefold() not in job.employment_type.casefold()
+        ):
+            continue
+
+        if payload.experience:
+            searchable_text = f"{job.title} {job.description}".casefold()
+            if payload.experience.casefold() not in searchable_text:
+                continue
+
+        score = calculate_match_score(
+            job_title=job.title,
+            job_location=job.location,
+            job_skills=job.required_skills or [],
+            profile=MY_PROFILE,
+        )
+
+        if score < payload.min_match_score:
+            continue
+
+        skill_gaps = get_skill_gaps(job.required_skills or [], MY_PROFILE)
+
+        if payload.skills:
+            requested_skills = {skill.casefold() for skill in payload.skills}
+            available_skills = {
+                skill.casefold()
+                for skill in (job.required_skills or [])
+            }
+            if not requested_skills.intersection(available_skills):
+                continue
+
+        results.append(
+            {
+                "id": job.id,
+                "title": job.title,
+                "company": job.company,
+                "location": job.location,
+                "job_url": job.job_url,
+                "source": job.source,
+                "employment_type": job.employment_type,
+                "required_skills": job.required_skills,
+                "match_score": score,
+                **skill_gaps,
+            }
+        )
+
+    results.sort(key=lambda item: item["match_score"], reverse=True)
+
     return {
         "filters": payload.model_dump(),
-        "jobs": [],
-        "message": "Search filters validated. Job matching integration is the next step.",
+        "count": len(results),
+        "jobs": results,
     }
+
 
 
 @app.post("/jobs", status_code=201)
