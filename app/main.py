@@ -30,9 +30,27 @@ class JobCreateRequest(BaseModel):
     required_skills: list[str] = Field(default_factory=list)
 
 
+class JobSearchRequest(BaseModel):
+    role: str = Field(default="", max_length=200)
+    location: str = Field(default="", max_length=200)
+    experience: str = Field(default="", max_length=100)
+    job_type: str = Field(default="", max_length=100)
+    skills: list[str] = Field(default_factory=list)
+    min_match_score: int = Field(default=0, ge=0, le=100)
+
+
 @app.get("/health")
 def health():
     return {"status": "healthy", "service": "JobPilot AI"}
+
+
+@app.post("/jobs/search")
+def search_jobs(payload: JobSearchRequest):
+    return {
+        "filters": payload.model_dump(),
+        "jobs": [],
+        "message": "Search filters validated. Job matching integration is the next step.",
+    }
 
 
 @app.post("/jobs", status_code=201)
