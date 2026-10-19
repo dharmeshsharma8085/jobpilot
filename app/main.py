@@ -1,8 +1,15 @@
-from app.matching.scorer import MY_PROFILE, calculate_match_score, get_skill_gaps
+from app.matching.scorer import (
+    CandidateProfile,
+    MY_PROFILE,
+    calculate_match_score,
+    get_skill_gaps,
+)
 from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.orm import Session
-
+from app.models.profile_record import ProfileRecord
+from app.profile.schemas import ProfileSettings, ProfileResponse
+from app.profile.repository import get_profile, save_profile
 from app.database import SessionLocal
 from app.models.job import Job
 from app.services.job_ingestion import ingest_job
@@ -44,6 +51,25 @@ def health():
     return {"status": "healthy", "service": "JobPilot AI"}
 
 
+@app.get("/profile", response_model=ProfileResponse)
+def read_profile(db: Session = Depends(get_db)):
+    profile = get_profile(db)
+
+    if profile is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Candidate profile not found. Save your profile first.",
+        )
+
+    return profile
+
+
+@app.put("/profile", response_model=ProfileResponse)
+def update_profile(
+    payload: ProfileSettings,
+    db: Session = Depends(get_db),
+):
+    return save_profile(db, payload)
 
 @app.post("/jobs/search")
 def search_jobs(
@@ -51,6 +77,19 @@ def search_jobs(
     db: Session = Depends(get_db),
 ):
     jobs = list_jobs(db, limit=100)
+    saved_profile = get_profile(db)
+
+    if saved_profile is not None:
+        active_profile = CandidateProfile(
+            target_roles=saved_profile.target_roles,
+            skills=saved_profile.skills,
+            preferred_locations=saved_profile.preferred_locations,
+            projects=saved_profile.projects,
+            preferred_employment_types=saved_profile.preferred_employment_types,
+        )
+    else:
+        active_profile = MY_PROFILE
+        
 
     results = []
 
