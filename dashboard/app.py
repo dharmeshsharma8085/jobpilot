@@ -16,15 +16,10 @@ API_BASE_URL = os.getenv("JOBPILOT_API_URL", "http://127.0.0.1:8000")
 st.markdown(
     """
     <style>
-    .block-container {padding-top: 2rem; padding-bottom: 2rem;}
-    .job-card {
-        border: 1px solid #e4e7ec;
-        border-radius: 14px;
-        padding: 18px;
-        margin-bottom: 14px;
-        background: var(--secondary-background-color);
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
     }
-    .muted {color: #667085; font-size: 0.9rem;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -39,6 +34,7 @@ def api_request(method, path, **kwargs):
             timeout=15,
             **kwargs,
         )
+
         if response.ok:
             return response.json()
 
@@ -48,6 +44,7 @@ def api_request(method, path, **kwargs):
             detail = response.text
 
         st.error(f"API error ({response.status_code}): {detail}")
+
     except requests.RequestException as exc:
         st.error(
             "Backend se connection nahi ho paaya. "
@@ -82,11 +79,14 @@ else:
     st.sidebar.warning("Backend connection unavailable")
 
 
+# -------------------------
+# Dashboard
+# -------------------------
 if page == "Dashboard":
     st.title("Welcome to JobPilot AI")
     st.write(
         "Find relevant opportunities, understand your skill gaps, "
-        "and manage your candidate profile."
+        "and manage your career preferences."
     )
 
     jobs = api_request("GET", "/jobs?limit=100")
@@ -94,21 +94,30 @@ if page == "Dashboard":
 
     if jobs is not None:
         total_jobs = len(jobs)
+
         scored_jobs = [
-            job for job in jobs if job.get("match_score") is not None
+            job for job in jobs
+            if job.get("match_score") is not None
         ]
+
         average_score = (
-            sum(job["match_score"] for job in scored_jobs) / len(scored_jobs)
+            sum(job["match_score"] for job in scored_jobs)
+            / len(scored_jobs)
             if scored_jobs
             else 0
         )
 
         col1, col2, col3 = st.columns(3)
+
         col1.metric("Jobs in Database", total_jobs)
+
         col2.metric(
             "Average Stored Match Score",
-            f"{average_score:.1f}%" if scored_jobs else "Not calculated",
+            f"{average_score:.1f}%"
+            if scored_jobs
+            else "Not calculated",
         )
+
         col3.metric(
             "Profile",
             "Saved" if profile else "Not available",
@@ -119,11 +128,15 @@ if page == "Dashboard":
         if jobs:
             for job in jobs[:5]:
                 with st.container(border=True):
-                    st.markdown(f"**{job.get('title', 'Untitled role')}**")
+                    st.markdown(
+                        f"**{job.get('title', 'Untitled role')}**"
+                    )
+
                     st.caption(
                         f"{job.get('company', 'Unknown company')} · "
                         f"{job.get('location', 'Location not specified')}"
                     )
+
                     if job.get("job_url"):
                         st.markdown(
                             f"[View opportunity]({job['job_url']})"
@@ -139,14 +152,23 @@ if page == "Dashboard":
         show_skills(profile.get("target_roles", []))
 
 
+# -------------------------
+# Recommended Jobs
+# -------------------------
 elif page == "Recommended Jobs":
     st.title("Recommended Jobs")
-    st.write("Search jobs and inspect your match scores and skill gaps.")
+    st.write(
+        "Search jobs and inspect your match scores and skill gaps."
+    )
 
     with st.form("job_search_form"):
         col1, col2 = st.columns(2)
 
-        role = col1.text_input("Target role", placeholder="AI Engineer")
+        role = col1.text_input(
+            "Target role",
+            placeholder="AI Engineer",
+        )
+
         location = col2.text_input(
             "Location",
             placeholder="Remote or India",
@@ -156,8 +178,15 @@ elif page == "Recommended Jobs":
 
         job_type = col3.selectbox(
             "Employment type",
-            ["Any", "Internship", "Full-time", "Part-time", "Contract"],
+            [
+                "Any",
+                "Internship",
+                "Full-time",
+                "Part-time",
+                "Contract",
+            ],
         )
+
         experience = col4.text_input(
             "Experience keyword",
             placeholder="Entry level",
@@ -167,7 +196,13 @@ elif page == "Recommended Jobs":
             "Required skills (comma-separated)",
             placeholder="Python, SQL, LangChain",
         )
-        min_score = st.slider("Minimum match score", 0, 100, 0)
+
+        min_score = st.slider(
+            "Minimum match score",
+            0,
+            100,
+            0,
+        )
 
         submitted = st.form_submit_button(
             "Find Matching Jobs",
@@ -191,7 +226,11 @@ elif page == "Recommended Jobs":
             "min_match_score": min_score,
         }
 
-        result = api_request("POST", "/jobs/search", json=payload)
+        result = api_request(
+            "POST",
+            "/jobs/search",
+            json=payload,
+        )
 
         if result is not None:
             st.session_state["jobpilot_search_results"] = result
@@ -199,18 +238,24 @@ elif page == "Recommended Jobs":
     result = st.session_state.get("jobpilot_search_results")
 
     if result is not None:
-        st.subheader(f"Found {result.get('count', 0)} matching jobs")
+        st.subheader(
+            f"Found {result.get('count', 0)} matching jobs"
+        )
 
         for job in result.get("jobs", []):
             with st.container(border=True):
                 col1, col2 = st.columns([4, 1])
 
                 with col1:
-                    st.markdown(f"### {job.get('title', 'Untitled role')}")
+                    st.markdown(
+                        f"### {job.get('title', 'Untitled role')}"
+                    )
+
                     st.write(
                         f"**{job.get('company', 'Unknown company')}** · "
                         f"{job.get('location', 'Location not specified')}"
                     )
+
                     st.caption(
                         f"Source: {job.get('source', 'Unknown')} · "
                         f"Type: {job.get('employment_type', 'Not specified')}"
@@ -238,19 +283,25 @@ elif page == "Recommended Jobs":
                         )
 
                     st.markdown("**Score breakdown**")
+
                     breakdown = job.get("score_breakdown", {})
 
                     if breakdown:
                         for category, value in breakdown.items():
+                            label = category.replace("_", " ").title()
+
                             if isinstance(value, (int, float)):
-                                st.write(f"{category.replace('_', ' ').title()}: {value}")
-                                st.progress(max(0.0, min(1.0, float(value) / 100)))
+                                st.write(f"{label}: {value}")
+                                st.progress(
+                                    max(0.0, min(1.0, float(value) / 100))
+                                )
                             else:
-                                st.write(f"{category}: {value}")
+                                st.write(f"{label}: {value}")
                     else:
                         st.caption("No score breakdown available.")
 
                     unknown = job.get("unknown_signals", [])
+
                     if unknown:
                         st.caption(f"Unknown signals: {unknown}")
 
@@ -258,21 +309,28 @@ elif page == "Recommended Jobs":
                     st.link_button(
                         "View / Apply",
                         job["job_url"],
-                        use_container_width=False,
                     )
 
         if not result.get("jobs"):
             st.info(
-                "Koi matching job nahi mili. Filters kam karke dobara try karo."
+                "Koi matching job nahi mili. "
+                "Filters kam karke dobara try karo."
             )
 
     else:
-        st.info("Filters select karke Find Matching Jobs par click karo.")
+        st.info(
+            "Filters select karke Find Matching Jobs par click karo."
+        )
 
 
+# -------------------------
+# My Profile
+# -------------------------
 elif page == "My Profile":
     st.title("My Candidate Profile")
-    st.write("Apni preferences update karo; changes backend database mein save honge.")
+    st.write(
+        "Apni preferences update karo; changes backend database mein save honge."
+    )
 
     profile = api_request("GET", "/profile")
 
@@ -282,18 +340,24 @@ elif page == "My Profile":
                 "Target roles (one per line)",
                 value="\n".join(profile.get("target_roles", [])),
             )
+
             skills = st.text_area(
                 "Skills (one per line)",
                 value="\n".join(profile.get("skills", [])),
             )
+
             locations = st.text_area(
                 "Preferred locations (one per line)",
-                value="\n".join(profile.get("preferred_locations", [])),
+                value="\n".join(
+                    profile.get("preferred_locations", [])
+                ),
             )
+
             projects = st.text_area(
                 "Projects (one per line)",
                 value="\n".join(profile.get("projects", [])),
             )
+
             employment_types = st.text_area(
                 "Preferred employment types (one per line)",
                 value="\n".join(
@@ -335,7 +399,11 @@ elif page == "My Profile":
                 ],
             }
 
-            updated = api_request("PUT", "/profile", json=payload)
+            updated = api_request(
+                "PUT",
+                "/profile",
+                json=payload,
+            )
 
             if updated is not None:
                 st.success("Profile saved successfully!")
@@ -343,6 +411,6 @@ elif page == "My Profile":
 
     else:
         st.warning(
-            "Profile load nahi hui. Backend check karo aur profile endpoint "
-            "verify karo."
+            "Profile load nahi hui. Backend check karo aur "
+            "profile endpoint verify karo."
         )
