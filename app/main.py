@@ -1,6 +1,8 @@
 
 import logging
 
+from app.repositories.job_repository import get_job_by_url
+from app.services.remotive_client import fetch_remotive_jobs
 from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.orm import Session
@@ -211,6 +213,60 @@ def search_jobs(
             status_code=500,
             detail="Job search failed. Check application logs for the cause.",
         ) from exc
+
+
+
+@app.post("/jobs/ingest/remotive")
+def ingest_remotive_endpoint(
+    search: str = Query(default="AI", min_length=1, max_length=100),
+    limit: int = Query(default=25, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Fetch remote jobs from Remotive and save them to PostgreSQL."""
+    try:
+        remote_jobs = fetch_remotive_jobs(search=search, limit=limit)
+
+        imported = 0
+        duplicates = 0
+        invalid = 0
+
+        for job in remote_jobs:
+            existing = get_job_by_url(db, str(job.job_url))
+
+            if existing:
+                duplicates += 1
+                continue
+
+            try:
+                saved_job = ingest_job(db, job)
+                if saved_job:
+                    imported += 1
+            except Exception:
+                db.rollback()
+                invalid += 1
+                logger.exception(
+                    "Failed to save a Remotive job: %s",
+                    job.job_url,
+                )
+
+        return {
+            "source": "Remotive",
+            "search": search,
+            "fetched": len(remote_jobs),
+            "imported": imported,
+            "duplicates_skipped": duplicates,
+            "failed": invalid,
+            "message": "Job ingestion completed.",
+        }
+
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Remotive ingestion failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to fetch jobs from Remotive. Check application logs.",
+        ) from exc
+
 
 
 @app.post("/jobs", status_code=201)
